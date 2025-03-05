@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, X } from "lucide-react"; // Iconos para volver y cerrar popup
 import "./adminProductsStyle.css";
 import { customFetch } from "../../utils/api";
 
 const AdminProducts = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -10,6 +13,10 @@ const AdminProducts = () => {
   const [imageName, setImageName] = useState("Seleccionar Imagen");
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  // Estado para manejar el popup de eliminación
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
   useEffect(() => {
     fetchProducts();
@@ -47,11 +54,10 @@ const AdminProducts = () => {
     formData.append("price", price);
 
     if (image) {
-      formData.append("image", image); // ✅ Nueva imagen seleccionada
+      formData.append("image", image);
     } else if (editingId) {
       const existingProduct = products.find((p) => p.id === editingId);
       if (existingProduct && existingProduct.imageUrl) {
-        // ✅ Mantener imagen actual si no se selecciona una nueva
         const response = await fetch(existingProduct.imageUrl);
         const blob = await response.blob();
         formData.append("image", blob, "currentImage.png");
@@ -85,22 +91,28 @@ const AdminProducts = () => {
     setName(product.name);
     setPrice(product.price);
     setEditingId(product.id);
-    setImage(null); // ✅ Limpia la imagen previa si había una cargada
+    setImage(null);
     setImageName(product.imageUrl ? "Imagen actual" : "Seleccionar Imagen");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este producto?")) return;
+  const confirmDelete = (product) => {
+    setProductToDelete(product);
+    setShowDeletePopup(true);
+  };
+
+  const handleDelete = async () => {
+    if (!productToDelete) return;
 
     const token = localStorage.getItem("token");
     try {
-      await fetch(`http://localhost:8080/api/products/${id}`, {
+      await fetch(`http://localhost:8080/api/products/${productToDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
       fetchProducts();
+      setShowDeletePopup(false);
     } catch (error) {
       console.error("❌ Error al eliminar producto:", error);
     }
@@ -116,7 +128,12 @@ const AdminProducts = () => {
 
   return (
     <div className="admin-page">
-      {/* Contenedor independiente para agregar/modificar productos */}
+      {/* 🔹 Botón de Volver */}
+      <div className="dashboard-sidebar" onClick={() => navigate("/admin-options")}>
+        <ArrowLeft size={40} className="back-icon" />
+      </div>
+
+      {/* Contenedor de Formulario */}
       <div className="form-container">
         <h2>{editingId ? "Modificar Producto" : "Agregar Producto"}</h2>
         <form onSubmit={handleSubmit}>
@@ -143,21 +160,15 @@ const AdminProducts = () => {
                 setImage(e.target.files[0]);
                 setImageName(e.target.files[0] ? e.target.files[0].name : "Seleccionar Imagen");
               }}
-              required={!editingId} // Requerido solo si es un nuevo producto
+              required={!editingId}
             />
           </label>
-          <button type="submit">
-            {editingId ? "Guardar Cambios" : "Agregar"}
-          </button>
-          {editingId && (
-            <button type="button" onClick={resetForm}>
-              Cancelar
-            </button>
-          )}
+          <button type="submit">{editingId ? "Guardar Cambios" : "Agregar"}</button>
+          {editingId && <button type="button" onClick={resetForm}>Cancelar</button>}
         </form>
       </div>
 
-      {/* Contenedor independiente para la lista de productos */}
+      {/* Contenedor de Productos */}
       <div className="products-container">
         <h2 className="static-title">Lista de Productos</h2>
         <div className="products-grid-admin">
@@ -167,27 +178,38 @@ const AdminProducts = () => {
             products.map((product) => (
               <div key={product.id} className="product-item">
                 {product.imageUrl && (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="product-image"
-                  />
+                  <img src={product.imageUrl} alt={product.name} className="product-image" />
                 )}
                 <h3>{product.name}</h3>
                 <p>${product.price}</p>
                 <div className="product-actions">
-                  <button className="edit-btn" onClick={() => handleEdit(product)}>
-                    ✏️ Editar
-                  </button>
-                  <button className="delete-btn" onClick={() => handleDelete(product.id)}>
-                    🗑️ Eliminar
-                  </button>
+                  <button className="edit-btn" onClick={() => handleEdit(product)}>✏️ Editar</button>
+                  <button className="delete-btn" onClick={() => confirmDelete(product)}>🗑️ Eliminar</button>
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* 🔹 Popup de Confirmación de Eliminación */}
+      {showDeletePopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X className="popup-close" size={32} onClick={() => setShowDeletePopup(false)} />
+            <h2>¿Eliminar producto?</h2>
+            <p>¿Estás seguro de que deseas eliminar <strong>{productToDelete?.name}</strong>?</p>
+            <div className="popup-buttons">
+              <button className="popup-btn popup-btn-cash" onClick={handleDelete}>
+                ✅ Confirmar
+              </button>
+              <button className="popup-btn popup-btn-qr" onClick={() => setShowDeletePopup(false)}>
+                ❌ Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

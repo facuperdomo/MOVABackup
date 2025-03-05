@@ -231,3 +231,31 @@ body, html {
     }
   }
   
+  /* 🔹 Botón de Volver */
+.dashboard-sidebar {
+  width: 100px;
+  height: 100vh;
+  background-color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  left: 0;
+  top: 0;
+  transition: background 0.2s ease, transform 0.1s ease;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+  cursor: pointer;
+}
+
+.dashboard-sidebar:hover {
+  background-color: #444;
+}
+
+.back-icon {
+  transition: transform 0.1s ease;
+}
+
+.dashboard-sidebar:active .back-icon {
+  transform: scale(0.9);
+}

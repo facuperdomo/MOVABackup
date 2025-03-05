@@ -8,6 +8,7 @@ import AdminOptions from "./components/admin/AdminOptions"; // Nueva pantalla pa
 import PrivateRoute from "./components/PrivateRoute";
 import AdminProducts from "./components/adminProducts/AdminProducts";
 import { isTokenValid } from "./utils/authUtils";
+import Statistics from "./components/statistics/Statistics";
 
 const App = () => {
   return (
@@ -25,6 +26,7 @@ const App = () => {
             {/* Rutas protegidas solo para administradores */}
             <Route element={<PrivateRoute adminOnly={true} />}>
               <Route path="/admin-options" element={<AdminOptions />} />
+              <Route path="/statistics" element={<Statistics />} />
             </Route>
 
             {/* Rutas protegidas para usuarios autenticados */}

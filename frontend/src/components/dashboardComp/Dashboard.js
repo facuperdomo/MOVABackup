@@ -1,8 +1,10 @@
+// src/pages/Dashboard.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "./dashboardStyle.css";
 import { ArrowLeft, Trash2, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
+import PaymentQR from "../paymentqr/PaymentQR"; // Asegúrate de que la ruta sea correcta
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -12,15 +14,16 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showPopup, setShowPopup] = useState(false);
-  const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false); // ✅ NUEVO: Estado de la caja
+  const [showQR, setShowQR] = useState(false); // Estado para mostrar el QR
+  const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false); // Estado de la caja
 
-  // ✅ Verificar si la caja está abierta
+  // Verificar si la caja está abierta
   const checkCashRegisterStatus = async () => {
     try {
       const response = await customFetch("http://localhost:8080/api/cash-register/status");
       setIsCashRegisterOpen(response); // true o false
     } catch (error) {
-      console.error("❌ Error al verificar la caja:", error);
+      console.error("Error al verificar la caja:", error);
     }
   };
 
@@ -28,7 +31,7 @@ const Dashboard = () => {
     const role = localStorage.getItem("role");
     setIsAdmin(role === "ADMIN");
     fetchProducts();
-    checkCashRegisterStatus(); // ✅ Llama al estado de la caja al montar el componente
+    checkCashRegisterStatus();
   }, []);
 
   const fetchProducts = async () => {
@@ -46,7 +49,7 @@ const Dashboard = () => {
 
       setProducts(productsWithFixedImages);
     } catch (error) {
-      console.error("❌ Error al obtener productos:", error);
+      console.error("Error al obtener productos:", error);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -83,12 +86,15 @@ const Dashboard = () => {
     navigate("/login");
   };
 
+  // Al abrir el popup, se resetea la vista para mostrar la selección de pago
   const handlePayment = () => {
     setShowPopup(true);
+    setShowQR(false);
   };
 
   const closePopup = () => {
     setShowPopup(false);
+    setShowQR(false);
   };
 
   const handleCashPayment = async () => {
@@ -108,12 +114,12 @@ const Dashboard = () => {
         method: "POST",
         body: JSON.stringify(saleData),
       });
-      console.log("💸 Pago con efectivo confirmado y guardado en la base de datos");
+      console.log("Pago con efectivo confirmado y guardado en la base de datos");
       setShowPopup(false);
       setCart([]);
       setTotal(0);
     } catch (error) {
-      console.error("❌ Error al guardar la venta:", error);
+      console.error("Error al guardar la venta:", error);
       alert("Ocurrió un error al procesar la venta. Inténtelo de nuevo.");
     }
   };
@@ -190,19 +196,13 @@ const Dashboard = () => {
           </div>
           <div className="cart-footer">
             <span className="total-amount">Total: ${total}</span>
-
-            {/* ✅ BOTÓN DESACTIVADO SI LA CAJA ESTÁ CERRADA */}
-            <button
-              className="accept-sale"
-              onClick={handlePayment}
-              disabled={!isCashRegisterOpen}
-            >
+            <button className="accept-sale" onClick={handlePayment} disabled={!isCashRegisterOpen}>
               Aceptar Venta
             </button>
-
-            {/* ✅ MENSAJE DE AVISO SI LA CAJA ESTÁ CERRADA */}
             {!isCashRegisterOpen && (
-              <p className="cash-register-closed">⚠️ La caja está cerrada. No se pueden realizar ventas.</p>
+              <p className="cash-register-closed">
+                ⚠️ La caja está cerrada. No se pueden realizar ventas.
+              </p>
             )}
           </div>
         </div>
@@ -222,15 +222,33 @@ const Dashboard = () => {
         <div className="popup-overlay" onClick={handleOverlayClick}>
           <div className="popup-content">
             <X className="popup-close" size={32} onClick={closePopup} />
-            <h2>Selecciona el Método de Pago</h2>
-            <div className="popup-buttons">
-              <button className="popup-btn popup-btn-cash" onClick={handleCashPayment}>
-                💸 Pagar con Efectivo
-              </button>
-              <button className="popup-btn popup-btn-qr" onClick={() => console.log("📱 Pago con QR")}>
-                📱 Pagar con QR
-              </button>
-            </div>
+            {showQR ? (
+              // Vista de pago con QR
+              <>
+                <h2>Escanea el código QR para pagar</h2>
+                <PaymentQR amount={total} />
+                <button onClick={() => setShowQR(false)}>Volver</button>
+              </>
+            ) : (
+              // Vista de selección de método de pago
+              <>
+                <h2>Selecciona el Método de Pago</h2>
+                <div className="popup-buttons">
+                  <button className="popup-btn popup-btn-cash" onClick={handleCashPayment}>
+                    💸 Pagar con Efectivo
+                  </button>
+                  <button
+                    className="popup-btn popup-btn-qr"
+                    onClick={() => {
+                      console.log("Pago con QR seleccionado");
+                      setShowQR(true);
+                    }}
+                  >
+                    📱 Pagar con QR
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

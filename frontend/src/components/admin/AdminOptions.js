@@ -108,7 +108,7 @@ const AdminOptions = () => {
         </div>
         <ul>
           <li onClick={() => navigate("/dashboard")}>🛒 {isMenuOpen && <span>Venta</span>}</li>
-          <li onClick={() => navigate("/admin/statistics")}>📊 {isMenuOpen && <span>Estadísticas</span>}</li>
+          <li onClick={() => navigate("/statistics")}>📊 {isMenuOpen && <span>Estadísticas</span>}</li>
           <li onClick={() => navigate("/adminProducts")}>📦 {isMenuOpen && <span>Productos</span>}</li>
           <li onClick={logout}>🚪 {isMenuOpen && <span>Cerrar Sesión</span>}</li>
         </ul>
