@@ -15,7 +15,7 @@ const Statistics = () => {
   const [salesData, setSalesData] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [cashRegisterHistory, setCashRegisterHistory] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState("month");
+  const [selectedFilter, setSelectedFilter] = useState("day");  // 🔹 Valor por defecto: "día"
   const [selectedOption, setSelectedOption] = useState("sales");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,9 +30,10 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customFetch(
-        `http://localhost:8080/api/statistics/sales?filter=${selectedFilter}`
-      );
+      const url = `http://localhost:8080/api/statistics/sales?filter=${selectedFilter}`;
+      console.log(`🔍 Fetching sales data from: ${url}`);  // 🛠 Depuración
+
+      const response = await customFetch(url);
 
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
 
@@ -50,41 +51,41 @@ const Statistics = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customFetch(
-        `http://localhost:8080/api/statistics/top-selling-drinks?filter=${selectedFilter}`
-      );
-  
-      // Si el servidor devuelve 204, forzamos una respuesta vacía
+      const url = `http://localhost:8080/api/statistics/top-selling-drinks?filter=${selectedFilter}`;
+      console.log(`🔍 Fetching top products from: ${url}`);  // 🛠 Depuración
+
+      const response = await customFetch(url);
+
       if (!response) {
         console.warn("⚠️ No hay productos vendidos en este periodo.");
         setTopProducts([]);
         return;
       }
-  
-      if (!Array.isArray(response)) {
-        console.error("❌ Error: La respuesta no es un array. Respuesta:", response);
-        throw new Error("La respuesta del servidor no es un array");
-      }
-  
+
+      if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
+
       setTopProducts(response);
     } catch (err) {
       console.error("❌ Error al obtener productos más vendidos:", err);
       setError("Hubo un error al obtener los productos más vendidos.");
-      setTopProducts([]); // Evita datos antiguos en caso de error
+      setTopProducts([]);
     } finally {
       setLoading(false);
     }
   };
-  
 
   const fetchCashRegisterHistory = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await customFetch("http://localhost:8080/api/statistics/cash-register-history");
+      const url = `http://localhost:8080/api/statistics/cash-register-history?filter=${selectedFilter}`;
+      console.log(`🔍 Fetching cash register history from: ${url}`);  // 🛠 Depuración
+
+      const response = await customFetch(url);
 
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
 
+      console.log("🟢 Historial de caja recibido:", response);
       setCashRegisterHistory(response);
     } catch (err) {
       console.error("❌ Error al obtener historial de caja:", err);
@@ -95,8 +96,14 @@ const Statistics = () => {
     }
   };
 
+  // Formatear fecha correctamente
+  const formatDate = (dateString) => {
+    if (!dateString) return "Fecha no disponible";
+    return dateString.replace("T", " ").replace(/-/g, "/");
+  };
+
   const salesChartData = {
-    labels: salesData.map((sale) => sale.date),
+    labels: salesData.map((sale) => formatDate(sale.date)),
     datasets: [
       {
         label: "Ventas",
@@ -108,7 +115,6 @@ const Statistics = () => {
     ],
   };
 
-  // Función para generar colores aleatorios
   const generateColors = (numColors) => {
     return Array.from({ length: numColors }, () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`);
   };
@@ -130,7 +136,6 @@ const Statistics = () => {
 
   return (
     <div className="statistics-page">
-      {/* Sidebar con opciones */}
       <div className="statistics-sidebar">
         <ArrowLeft size={40} className="back-icon" onClick={() => navigate("/dashboard")} />
         <button className={selectedOption === "sales" ? "active" : ""} onClick={() => setSelectedOption("sales")}>
@@ -144,18 +149,13 @@ const Statistics = () => {
         </button>
       </div>
 
-      {/* Contenido */}
       <div className="statistics-content">
         <h2>📊 Estadísticas</h2>
 
         {/* Filtros */}
         <div className="filter-container">
           {["day", "week", "month", "year"].map((filter) => (
-            <button
-              key={filter}
-              className={selectedFilter === filter ? "active" : ""}
-              onClick={() => setSelectedFilter(filter)}
-            >
+            <button key={filter} className={selectedFilter === filter ? "active" : ""} onClick={() => setSelectedFilter(filter)}>
               {filter === "day" ? "📅 Día" : filter === "week" ? "📆 Semana" : filter === "month" ? "📅 Mes" : "📆 Año"}
             </button>
           ))}
@@ -172,7 +172,7 @@ const Statistics = () => {
               <Bar data={salesChartData} />
             </div>
           ) : (
-            <p>❌ No hay ventas realizadas en el período seleccionado.</p>
+            <p>❌ No hay ventas en el período seleccionado.</p>
           )
         ) : selectedOption === "top-products" ? (
           topProducts.length > 0 ? (
@@ -183,18 +183,19 @@ const Statistics = () => {
             <p>❌ No hay productos vendidos en el período seleccionado.</p>
           )
         ) : (
-          <div className="cash-register-history">
-            {cashRegisterHistory.length > 0 ? (
-              cashRegisterHistory.map((entry, index) => (
-                <div key={index} className="cash-register-entry">
-                  <p>📆 {entry.date}</p>
-                  <p>🔹 {entry.type === "OPEN" ? "Apertura" : "Cierre"} - 💰 Total: ${entry.total}</p>
+          cashRegisterHistory.length > 0 ? (
+            <div className="cash-register-list">
+              {cashRegisterHistory.map((entry, index) => (
+                <div key={index} className="cash-register-card">
+                  <p>📅 Apertura: {formatDate(entry.openDate)}</p>
+                  <p>📅 Cierre: {formatDate(entry.closeDate)}</p>
+                  <p>💰 Total: {entry.totalSales !== "Sin datos" ? `$${entry.totalSales}` : "No se registraron ventas"}</p>
                 </div>
-              ))
-            ) : (
-              <p>❌ No hay historial de caja disponible.</p>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p>❌ No hay registros de caja en el período seleccionado.</p>
+          )
         )}
       </div>
     </div>
