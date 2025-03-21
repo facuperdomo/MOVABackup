@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Chart, registerables } from "chart.js";
 import { Bar, Pie } from "react-chartjs-2";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { customFetch } from "../../utils/api";
 import "./statisticsStyle.css";
 
@@ -15,10 +15,12 @@ const Statistics = () => {
   const [salesData, setSalesData] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [cashRegisterHistory, setCashRegisterHistory] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState("day");  // 🔹 Valor por defecto: "día"
+  const [selectedFilter, setSelectedFilter] = useState("day");
   const [selectedOption, setSelectedOption] = useState("sales");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [saleToCancel, setSaleToCancel] = useState(null);
 
   useEffect(() => {
     if (selectedOption === "sales") fetchSalesData();
@@ -26,20 +28,16 @@ const Statistics = () => {
     if (selectedOption === "cash-register") fetchCashRegisterHistory();
   }, [selectedFilter, selectedOption]);
 
+  // Obtener estadísticas de ventas
   const fetchSalesData = async () => {
     setLoading(true);
     setError(null);
     try {
       const url = `http://localhost:8080/api/statistics/sales?filter=${selectedFilter}`;
-      console.log(`🔍 Fetching sales data from: ${url}`);  // 🛠 Depuración
-
       const response = await customFetch(url);
-
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
-
       setSalesData(response);
     } catch (err) {
-      console.error("❌ Error al obtener estadísticas de ventas:", err);
       setError("No se pudieron cargar las estadísticas.");
       setSalesData([]);
     } finally {
@@ -47,26 +45,16 @@ const Statistics = () => {
     }
   };
 
+  // Obtener los tragos más vendidos
   const fetchTopProducts = async () => {
     setLoading(true);
     setError(null);
     try {
       const url = `http://localhost:8080/api/statistics/top-selling-drinks?filter=${selectedFilter}`;
-      console.log(`🔍 Fetching top products from: ${url}`);  // 🛠 Depuración
-
       const response = await customFetch(url);
-
-      if (!response) {
-        console.warn("⚠️ No hay productos vendidos en este periodo.");
-        setTopProducts([]);
-        return;
-      }
-
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
-
       setTopProducts(response);
     } catch (err) {
-      console.error("❌ Error al obtener productos más vendidos:", err);
       setError("Hubo un error al obtener los productos más vendidos.");
       setTopProducts([]);
     } finally {
@@ -74,21 +62,16 @@ const Statistics = () => {
     }
   };
 
+  // Obtener el historial de caja
   const fetchCashRegisterHistory = async () => {
     setLoading(true);
     setError(null);
     try {
       const url = `http://localhost:8080/api/statistics/cash-register-history?filter=${selectedFilter}`;
-      console.log(`🔍 Fetching cash register history from: ${url}`);  // 🛠 Depuración
-
       const response = await customFetch(url);
-
       if (!Array.isArray(response)) throw new Error("La respuesta del servidor no es un array");
-
-      console.log("🟢 Historial de caja recibido:", response);
       setCashRegisterHistory(response);
     } catch (err) {
-      console.error("❌ Error al obtener historial de caja:", err);
       setError("No se pudo cargar el historial de caja.");
       setCashRegisterHistory([]);
     } finally {
@@ -102,12 +85,13 @@ const Statistics = () => {
     return dateString.replace("T", " ").replace(/-/g, "/");
   };
 
+  // Configurar datos del gráfico de ventas activas
   const salesChartData = {
-    labels: salesData.map((sale) => formatDate(sale.date)),
+    labels: salesData.filter((sale) => sale.estado === "ACTIVA").map((sale) => formatDate(sale.date)),
     datasets: [
       {
-        label: "Ventas",
-        data: salesData.map((sale) => sale.total),
+        label: "Ventas Activas",
+        data: salesData.filter((sale) => sale.estado === "ACTIVA").map((sale) => sale.total),
         backgroundColor: "rgba(54, 162, 235, 0.5)",
         borderColor: "rgba(54, 162, 235, 1)",
         borderWidth: 1,
@@ -115,17 +99,17 @@ const Statistics = () => {
     ],
   };
 
+  // Configurar datos del gráfico de tragos más vendidos
   const generateColors = (numColors) => {
     return Array.from({ length: numColors }, () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`);
   };
 
   const colors = generateColors(topProducts.length);
-
   const topProductsChartData = {
     labels: topProducts.map((product) => product.name),
     datasets: [
       {
-        label: "Cantidad vendida",
+        label: "Cantidad Vendida",
         data: topProducts.map((product) => product.totalSold),
         backgroundColor: colors,
         borderColor: colors,
@@ -134,25 +118,55 @@ const Statistics = () => {
     ],
   };
 
+  // Mostrar popup para cancelar venta
+  const handleCancelSale = (sale) => {
+    setSaleToCancel(sale);
+    setShowPopup(true);
+  };
+
+  // Confirmar cancelación
+  const confirmCancelSale = async () => {
+    if (!saleToCancel) return;
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/statistics/cancel-sale/${saleToCancel.id}`, {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) fetchSalesData();
+    } catch (error) {
+      console.error("❌ Error en la solicitud:", error);
+    } finally {
+      setShowPopup(false);
+      setSaleToCancel(null);
+    }
+  };
+
   return (
     <div className="statistics-page">
-      <div className="statistics-sidebar">
-        <ArrowLeft size={40} className="back-icon" onClick={() => navigate("/dashboard")} />
-        <button className={selectedOption === "sales" ? "active" : ""} onClick={() => setSelectedOption("sales")}>
-          📊 Ventas
-        </button>
-        <button className={selectedOption === "top-products" ? "active" : ""} onClick={() => setSelectedOption("top-products")}>
-          🍸 Tragos más vendidos
-        </button>
-        <button className={selectedOption === "cash-register" ? "active" : ""} onClick={() => setSelectedOption("cash-register")}>
-          💰 Historial de caja
-        </button>
-      </div>
+      <nav className="sidebar">
+        <ul>
+        <li onClick={() => navigate("/admin-options")}>
+            <ArrowLeft size={24} />
+          </li>
+          <li className={selectedOption === "sales" ? "active" : ""} onClick={() => setSelectedOption("sales")}>
+            📊
+          </li>
+          <li className={selectedOption === "top-products" ? "active" : ""} onClick={() => setSelectedOption("top-products")}>
+            🍸
+          </li>
+          <li className={selectedOption === "cash-register" ? "active" : ""} onClick={() => setSelectedOption("cash-register")}>
+            💰
+          </li>
+          
+        </ul>
+      </nav>
 
       <div className="statistics-content">
-        <h2>📊 Estadísticas</h2>
-
-        {/* Filtros */}
         <div className="filter-container">
           {["day", "week", "month", "year"].map((filter) => (
             <button key={filter} className={selectedFilter === filter ? "active" : ""} onClick={() => setSelectedFilter(filter)}>
@@ -161,42 +175,89 @@ const Statistics = () => {
           ))}
         </div>
 
-        {/* Estado de carga y errores */}
-        {loading ? (
-          <p>⌛ Cargando estadísticas...</p>
-        ) : error ? (
-          <p>❌ {error}</p>
-        ) : selectedOption === "sales" ? (
-          salesData.length > 0 ? (
+        {selectedOption === "sales" && (
+          <>
             <div className="chart-container">
               <Bar data={salesChartData} />
             </div>
-          ) : (
-            <p>❌ No hay ventas en el período seleccionado.</p>
-          )
-        ) : selectedOption === "top-products" ? (
-          topProducts.length > 0 ? (
-            <div className="chart-container">
-              <Pie data={topProductsChartData} />
-            </div>
-          ) : (
-            <p>❌ No hay productos vendidos en el período seleccionado.</p>
-          )
-        ) : (
-          cashRegisterHistory.length > 0 ? (
-            <div className="cash-register-list">
-              {cashRegisterHistory.map((entry, index) => (
-                <div key={index} className="cash-register-card">
-                  <p>📅 Apertura: {formatDate(entry.openDate)}</p>
-                  <p>📅 Cierre: {formatDate(entry.closeDate)}</p>
-                  <p>💰 Total: {entry.totalSales !== "Sin datos" ? `$${entry.totalSales}` : "No se registraron ventas"}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>❌ No hay registros de caja en el período seleccionado.</p>
-          )
+            <table className="sales-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Total</th>
+                  <th>Estado</th>
+                  <th>Modificar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {salesData.map((sale) => (
+                  <tr key={sale.id} className={sale.estado === "CANCELADA" ? "cancelada" : ""}>
+                    <td>{formatDate(sale.date)}</td>
+                    <td>${sale.total}</td>
+                    <td>{sale.estado === "CANCELADA" ? "❌ Cancelada" : "✅ Activa"}</td>
+                    <td>
+                      {sale.estado !== "CANCELADA" && (
+                        <button className="cancel-button" onClick={() => handleCancelSale(sale)}>❌ Cancelar</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
+
+        {selectedOption === "top-products" && (
+          <div className="chart-container">
+            <Pie data={topProductsChartData} />
+          </div>
+        )}
+
+        {selectedOption === "cash-register" && (
+          <>
+            <div className="chart-container">
+              <Bar data={{ labels: cashRegisterHistory.map((reg) => formatDate(reg.openDate)), datasets: [{ label: "Ventas Totales", data: cashRegisterHistory.map((reg) => reg.totalSales || 0), backgroundColor: "rgba(255, 99, 132, 0.5)", borderColor: "rgba(255, 99, 132, 1)", borderWidth: 1 }] }} />
+            </div>
+            <table className="sales-table">
+              <thead>
+                <tr>
+                  <th>Apertura</th>
+                  <th>Cierre</th>
+                  <th>Total Ventas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashRegisterHistory.map((register) => (
+                  <tr key={register.id}>
+                    <td>{formatDate(register.openDate)}</td>
+                    <td>{register.closeDate ? formatDate(register.closeDate) : "Abierta"}</td>
+                    <td>${register.totalSales}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* Popup de confirmación */}
+      {showPopup && (
+        <div className="popup-overlay">
+          <div className="popup-content">
+            <X className="popup-close" size={32} onClick={() => setShowPopup(false)} />
+            <h2>¿Seguro que quieres cancelar esta venta?</h2>
+            <p>Monto: ${saleToCancel?.total}</p>
+            <p>Fecha: {formatDate(saleToCancel?.date)}</p>
+            <div className="popup-buttons">
+              <button className="popup-btn popup-btn-cash" onClick={confirmCancelSale}>
+                ✅ Confirmar
+              </button>
+              <button className="popup-btn popup-btn-qr" onClick={() => setShowPopup(false)}>
+                ❌ Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

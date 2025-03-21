@@ -421,3 +421,53 @@ body, html {
     font-size: 12px;
   }
 }
+
+/* Botón de sincronización */
+.sync-sales-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  margin-top: 10px;
+}
+
+.sync-sales-btn:disabled {
+  background-color: #aaa;
+  cursor: not-allowed;
+}
+
+/* Mensaje de estado offline */
+.offline-message {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #ffcc00;
+  color: #333;
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: center;
+}
+
+/* Botón de deshacer la última venta */
+.undo-sale-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.undo-sale-btn:hover {
+  background-color: #c82333;
+}
+
+.undo-sale-btn:active {
+  transform: scale(0.98);
+}

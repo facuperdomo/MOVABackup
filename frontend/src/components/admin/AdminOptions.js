@@ -45,7 +45,6 @@ const AdminOptions = () => {
         body: JSON.stringify({ initialAmount: initialCash }),
       });
       setIsCashRegisterOpen(true);
-      navigate("/dashboard");
     } catch (error) {
       console.error("❌ Error al abrir caja:", error);
     }

@@ -24,8 +24,8 @@
   justify-content: center;  /* 🔹 Centra verticalmente */
   align-items: center;  /* 🔹 Centra horizontalmente */
   text-align: center;
-  padding: 30px;
   width: 100%;
+  padding-top: 30px;
   min-height: 100vh; /* 🔹 Ocupa toda la pantalla */
 }
 
@@ -164,4 +164,36 @@
   text-align: center;
   font-size: 18px;
   color: #ffcc00;
+}
+
+.sales-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.sales-table th,
+.sales-table td {
+  padding: 12px;
+  text-align: center;
+  border-bottom: 1px solid #444;
+}
+
+.sales-table th {
+  background-color: #333;
+  color: white;
+}
+
+.cancel-button {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s;
+}
+
+.cancel-button:hover {
+  background-color: darkred;
 }
